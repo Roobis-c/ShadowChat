@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>ShadowChat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --muted: #9ca3af;
+      --accent: #ff3131;
+      --you-bg: #ff3131;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Kumbh Sans', sans-serif;
+      background:
+        radial-gradient(circle at 100% 100%, oklch(62.31% 0.1881 259.83 / 0.24), transparent 55%),
+        radial-gradient(circle at 0% 0%, rgba(239, 68, 68, 0.22), transparent 50%),
+        #020308;
+      color: #e6eef6;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    #title {
+      margin: 0 0 18px;
+      font-size: 5rem;
+      font-weight: 800;
+      text-align: center;
+      color: #fff;
+    }
+
+    .layout {
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.099);
+      padding: 14px;
+    }
+
+    .left .btn {
+      display: inline-block;
+      margin-right: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #ff3131, #f97316);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .left input[type="text"],
+    .left input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: transparent;
+      color: #e6eef6;
+    }
+
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .accept,
+    .reject {
+      margin-top: 10px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+      transition: 0.2s ease;
+    }
+
+    .accept {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+    }
+
+    .accept:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    .reject {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: white;
+      margin-left: 6px;
+    }
+
+    .reject:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    .conn {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .chat-box {
+      height: 420px;
+      overflow: auto;
+      padding: 18px;
+      border-radius: 10px;
+      margin-top: 8px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(255, 255, 255, 0.099);
+    }
+
+    .msg {
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      max-width: 78%;
+    }
+
+    .msg.you {
+      margin-left: auto;
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .sender {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    button {
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .bubble {
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 15px;
+      line-height: 1.3;
+      word-break: break-word;
+      color: #ffffff;
+      background: var(--you-bg);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      width: fit-content;
+    }
+
+    .msg.you .bubble {
+      background: #060D19;
+      color: white;
+      border: none;
+    }
+
+    .system {
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+      margin: 10px 0;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .input-row input[type="text"] {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: transparent;
+      color: #e6eef6;
+    }
+
+    .send {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      background: var(--accent);
+      color: #032;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .chat-box {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 id="title">ShadowChat</h1>
+  <div class="layout">
+    <div class="card left">
+      <div id="choiceCard">
+        <button id="btnCreatePick" class="btn">Create</button>
+        <button id="btnJoinPick" class="btn">Join</button>
+        <p style="color:var(--muted); margin-top:10px; font-size:13px;">Choose whether to create (host) or join (guest)</p>
+      </div>
+
+      <div id="createCard" style="display:none; margin-top:10px;">
+        <h3 style="margin:0 0 8px 0;">Create Room</h3>
+        <input id="hostName" placeholder="Your name" type="text" />
+        <input id="createPwd" placeholder="Set password" type="password" />
+        <div style="margin-top:8px;">
+          <button id="createBtn" class="btn">Create</button>
+          <button class="backBtn" style="margin-left:6px; padding:10px 12px; border: 1px solid white; border-radius:8px;color:black">Back</button>
+        </div>
+
+        <div id="roomInfo" style="display:none; margin-top:10px;">
+          <div id="copyStatus" style="font-size:13px; color:var(--muted); display:none;">
+            Invite link copied to clipboard.
+          </div>
+          <button id="shareBtn" class="btn" style="margin-top:8px; display:none;">
+            Share link
+          </button>
+          <div style="margin-top:8px;">
+            <strong>Connected Guest:</strong> <span id="connectedGuest">None</span>
+          </div>
+        </div>
+
+        <div id="pendingArea" style="margin-top:10px;"></div>
+      </div>
+
+      <div id="joinCard" style="display:none; margin-top:10px;">
+        <h3 style="margin:0 0 8px 0;">Join Room</h3>
+        <input id="hostId" placeholder="Host ID" type="text" />
+        <input id="guestName" placeholder="Your name" type="text" />
+        <input id="joinPwd" placeholder="Room password" type="password" />
+        <div style="margin-top:8px;">
+          <button id="joinBtn" class="btn">Join</button>
+          <button class="backBtn" style="margin-left:6px; padding:10px 12px; border: 1px solid white; border-radius:8px;color:black">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card chat-header">
+        <div class="conn"><span id="statusText">Not connected</span></div>
+      </div>
+
+      <div id="chatBox" class="chat-box">
+        <div class="system">Welcome — create or join a room to start chatting.</div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="input-row">
+          <input id="msgInput" placeholder="Type your message..." type="text" disabled />
+          <button id="sendBtn" class="send" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script>
+    (function () {
+      // UI refs
+      const btnCreatePick = document.getElementById('btnCreatePick');
+      const btnJoinPick = document.getElementById('btnJoinPick');
+      const createCard = document.getElementById('createCard');
+      const joinCard = document.getElementById('joinCard');
+      const choiceCard = document.getElementById('choiceCard');
+
+      document.querySelectorAll(".backBtn").forEach(btn => {
+        btn.addEventListener('click', () => {
+          choiceCard.style.display = 'block';
+          createCard.style.display = 'none';
+          joinCard.style.display = 'none';
+        });
+      });
+
+      btnCreatePick.addEventListener('click', () => {
+        choiceCard.style.display = 'none';
+        createCard.style.display = 'block';
+      });
+
+      btnJoinPick.addEventListener('click', () => {
+        choiceCard.style.display = 'none';
+        joinCard.style.display = 'block';
+      });
+
+      // State
+      let peer = null;
+      let conn = null;
+      let isHost = false;
+      let roomPassword = '';
+      let hostDisplayName = '';
+      let guestDisplayName = '';
+      let lastInviteLink = '';
+
+      // Elements
+      const createBtn = document.getElementById('createBtn');
+      const createPwd = document.getElementById('createPwd');
+      const hostNameInput = document.getElementById('hostName');
+      const roomInfo = document.getElementById('roomInfo');
+      const copyStatus = document.getElementById('copyStatus');
+      const shareBtn = document.getElementById('shareBtn');
+      const connectedGuest = document.getElementById('connectedGuest');
+      const pendingArea = document.getElementById('pendingArea');
+      const hostIdInput = document.getElementById('hostId');
+      const guestNameInput = document.getElementById('guestName');
+      const joinPwd = document.getElementById('joinPwd');
+      const joinBtn = document.getElementById('joinBtn');
+      const chatBox = document.getElementById('chatBox');
+      const msgInput = document.getElementById('msgInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const statusText = document.getElementById('statusText');
+
+      function chatSystem(text) {
+        if (!text) return;
+        const el = document.createElement('div');
+        el.className = 'system';
+        el.textContent = text;
+        chatBox.appendChild(el);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function chatMessage(from, text, isYou) {
+        const msg = document.createElement('div');
+        msg.className = 'msg' + (isYou ? ' you' : '');
+        const sender = document.createElement('div');
+        sender.className = 'sender';
+        sender.textContent = isYou ? 'You' : from;
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+        msg.appendChild(sender);
+        msg.appendChild(bubble);
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function setStatusText(text) {
+        statusText.textContent = text;
+      }
+
+      function escapeHtml(s) {
+        if (!s && s !== 0) return '';
+        return String(s).replace(/[&<>"']/g, m => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[m]);
+      }
+
+      function ensureClosePeer() {
+        if (peer && !peer.destroyed) {
+          try { peer.destroy(); } catch (e) { }
+        }
+        peer = null;
+      }
+
+      // Attach chat handler once per connection
+      function attachChatHandlerOnce(c, side) {
+        if (!c || c._hasChatHandler) return;
+        c._hasChatHandler = true;
+        c._lastAuth = null;
+
+        c.on('data', data => {
+          if (!data || !data.type) return;
+
+          if (data.type === 'auth') {
+            c._lastAuth = data;
+            if (side === 'guest') {
+              if (data.ok) {
+                conn = c;
+                hostDisplayName = data.hostName || 'Host';
+                msgInput.disabled = false;
+                sendBtn.disabled = false;
+                setStatusText('Connected to ' + hostDisplayName);
+                chatSystem('Joined room. You are connected to host.');
+              } else {
+                setStatusText('Join rejected');
+                chatSystem('Join rejected: ' + (data.reason || 'unknown'));
+                alert('Join rejected: ' + (data.reason || 'unknown'));
+                try { c.close(); } catch (e) { }
+              }
+              joinBtn.disabled = false;
+            }
+          } else if (data.type === 'chat') {
+            const from = data.fromName || (side === 'host'
+              ? guestDisplayName || 'Guest'
+              : hostDisplayName || 'Host');
+            chatMessage(from, data.text, false);
+          }
+        });
+      }
+
+      // HOST: create room
+      createBtn.onclick = () => {
+        const pwd = createPwd.value.trim();
+        const hostName = hostNameInput.value.trim() || 'Host';
+        if (!pwd) return alert('Enter password');
+
+        roomPassword = pwd;
+        isHost = true;
+        hostDisplayName = hostName;
+        ensureClosePeer();
+        guestDisplayName = '';
+        peer = new Peer();
+
+        peer.on('open', id => {
+          const link = `${location.origin}${location.pathname}?host=${id}&pw=${encodeURIComponent(pwd)}`;
+          lastInviteLink = link;
+
+          roomInfo.style.display = 'block';
+          copyStatus.style.display = 'none';
+          shareBtn.style.display = 'none';
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link).then(() => {
+              copyStatus.textContent = 'Invite link copied to clipboard.';
+              copyStatus.style.display = 'block';
+            }).catch(() => {
+              copyStatus.textContent = 'Could not copy automatically. Please share using the button below.';
+              copyStatus.style.display = 'block';
+            });
+          } else {
+            copyStatus.textContent = 'Copy not supported on this browser. Use the Share button to send the link.';
+            copyStatus.style.display = 'block';
+          }
+
+          shareBtn.style.display = 'inline-block';
+
+          chatSystem('Room created. Invite link copied to clipboard (or use Share).');
+          setStatusText('Waiting for guest...');
+        });
+
+        peer.on('connection', c => {
+          attachChatHandlerOnce(c, 'host');
+
+          c.on('close', () => {
+            if (conn && conn.peer === c.peer) {
+              conn = null;
+              guestDisplayName = '';
+              connectedGuest.textContent = 'None';
+              msgInput.disabled = true;
+              sendBtn.disabled = true;
+              setStatusText('Guest disconnected');
+              chatSystem('Guest disconnected.');
+            } else {
+              removePendingById(c.peer);
+              chatSystem('Connection closed from pending guest.');
+            }
+          });
+
+          c.on('error', () => { });
+
+          showPending(c);
+        });
+
+        peer.on('error', () => {
+          console.error('peer error host');
+        });
+      };
+
+      // Share button handler
+      shareBtn.addEventListener('click', async () => {
+        if (!lastInviteLink) return;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: 'ShadowChat Room',
+              text: 'Join my ShadowChat room:',
+              url: lastInviteLink
+            });
+          } catch (e) {
+            console.warn('Share cancelled or failed', e);
+          }
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(lastInviteLink);
+            alert('Invite link copied to clipboard.');
+          } catch {
+            alert('Could not share automatically. Copy this link manually: ' + lastInviteLink);
+          }
+        } else {
+          alert('Sharing not supported on this device. Copy this link manually: ' + lastInviteLink);
+        }
+      });
+
+      function showPending(c) {
+        if (conn) {
+          try { c.send({ type: 'auth', ok: false, reason: 'Host already connected' }); } catch (e) { }
+          try { c.close(); } catch (e) { }
+          return;
+        }
+
+        removePendingById(c.peer);
+
+        const box = document.createElement('div');
+        box.id = 'pending-' + c.peer;
+        box.style.padding = '8px';
+        box.style.marginTop = '10px';
+        box.style.border = '1px solid white';
+        box.style.borderRadius = '8px';
+        box.innerHTML =
+          '<div style="font-weight:700">Join request</div>' +
+          `<div style="margin-top:6px;"><strong>Guest:</strong> <span id="gname-${c.peer}">${escapeHtml((c.metadata && c.metadata.username) || 'Guest')}</span></div>` +
+          '<div style="margin-top:8px;"><button class="accept">Accept</button> <button class="reject">Reject</button></div>';
+
+        pendingArea.appendChild(box);
+
+        const authWatcher = setInterval(() => {
+          if (c._lastAuth) {
+            const el = document.getElementById('gname-' + c.peer);
+            if (el) el.textContent = escapeHtml(c._lastAuth.username || 'Guest');
+            clearInterval(authWatcher);
+          }
+        }, 150);
+
+        box.querySelector('.accept').onclick = () => {
+          clearInterval(authWatcher);
+          const auth = c._lastAuth || {};
+          const guestPwd = auth.password || '';
+          const guestName = auth.username || (c.metadata && c.metadata.username) || 'Guest';
+
+          if (guestPwd !== roomPassword) {
+            try { c.send({ type: 'auth', ok: false, reason: 'Wrong password' }); } catch (e) { }
+            try { c.close(); } catch (e) { }
+            box.remove();
+            chatSystem('Rejected join (wrong password).');
+            return;
+          }
+
+          conn = c;
+          guestDisplayName = guestName;
+          connectedGuest.textContent = guestDisplayName || 'Guest';
+          msgInput.disabled = false;
+          sendBtn.disabled = false;
+          setStatusText('Connected to ' + guestDisplayName);
+
+          try {
+            conn.send({ type: 'auth', ok: true, hostName: hostDisplayName });
+          } catch (e) {
+            console.warn('send auth ok failed', e);
+          }
+
+          box.remove();
+          chatSystem(`${guestDisplayName} joined the room.`);
+        };
+
+        box.querySelector('.reject').onclick = () => {
+          clearInterval(authWatcher);
+          try { c.send({ type: 'auth', ok: false, reason: 'Rejected by host' }); } catch (e) { }
+          try { c.close(); } catch (e) { }
+          box.remove();
+          chatSystem('Rejected join request.');
+        };
+      }
+
+      function removePendingById(id) {
+        const el = document.getElementById('pending-' + id);
+        if (el) el.remove();
+      }
+
+      // GUEST: join room
+      joinBtn.onclick = () => {
+        const hostId = hostIdInput.value.trim();
+        const pwd = joinPwd.value.trim();
+        const guestName = guestNameInput.value.trim();
+        if (!hostId || !pwd || !guestName) return alert('Enter host ID, your name, and password');
+
+        roomPassword = pwd;
+        guestDisplayName = guestName;
+        joinBtn.disabled = true;
+        ensureClosePeer();
+        isHost = false;
+        peer = new Peer();
+
+        peer.on('open', () => {
+          const c = peer.connect(hostId, { metadata: { username: guestName } });
+          attachChatHandlerOnce(c, 'guest');
+
+          c.on('open', () => {
+            try {
+              c.send({ type: 'auth', username: guestName, password: pwd });
+            } catch (e) {
+              console.warn('guest send auth failed', e);
+            }
+            setStatusText('Waiting for host to accept...');
+            chatSystem('Join request sent. Waiting for host...');
+          });
+
+          c.on('close', () => {
+            if (conn && conn.peer === c.peer) {
+              conn = null;
+              msgInput.disabled = true;
+              sendBtn.disabled = true;
+              setStatusText('Disconnected');
+              chatSystem('Disconnected.');
+            } else {
+              setStatusText('Connection closed before acceptance');
+              chatSystem('Connection closed before acceptance');
+            }
+            joinBtn.disabled = false;
+          });
+
+          c.on('error', () => {
+            console.error('guest connection error');
+            setStatusText('Connection error');
+            chatSystem('Connection error');
+            joinBtn.disabled = false;
+          });
+        });
+
+        peer.on('error', () => {
+          console.error('peer error guest');
+          setStatusText('Peer error');
+          chatSystem('Peer error');
+          joinBtn.disabled = false;
+        });
+      };
+
+      // SEND
+      sendBtn.onclick = () => {
+        const text = msgInput.value.trim();
+        if (!text || !conn) return;
+        const fromName = isHost
+          ? (hostDisplayName || 'Host')
+          : (guestDisplayName || 'Guest');
+
+        try {
+          conn.send({ type: 'chat', text, fromName });
+        } catch (e) {
+          console.error('send failed', e);
+          return;
+        }
+
+        chatMessage('You', text, true);
+        msgInput.value = '';
+      };
+
+      msgInput.addEventListener('keyup', e => {
+        if (e.key === 'Enter') sendBtn.click();
+      });
+
+      // Autofill from URL
+      (function () {
+        const params = new URLSearchParams(location.search);
+        if (params.get('host')) hostIdInput.value = params.get('host');
+        if (params.get('pw')) joinPwd.value = params.get('pw');
+      })();
+    })();
+  </script>
+</body>
+</html>
