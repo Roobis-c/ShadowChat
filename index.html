@@ -295,25 +295,22 @@
   const joinCard = document.getElementById('joinCard');
   const choiceCard = document.getElementById('choiceCard');
 
-  document.querySelectorAll(".backBtn").forEach(btn => {
-    btn.addEventListener('click', () => {
-      choiceCard.style.display = 'block';
-      createCard.style.display = 'none';
-      joinCard.style.display = 'none';
-    });
-  });
+  document.querySelectorAll(".backBtn").forEach(b => b.addEventListener('click', () => {
+    choiceCard.style.display = 'block';
+    createCard.style.display = 'none';
+    joinCard.style.display = 'none';
+  }));
 
   btnCreatePick.addEventListener('click', () => {
     choiceCard.style.display = 'none';
     createCard.style.display = 'block';
   });
-
   btnJoinPick.addEventListener('click', () => {
     choiceCard.style.display = 'none';
     joinCard.style.display = 'block';
   });
 
-  // State
+  // state
   let peer = null;
   let conn = null;
   let isHost = false;
@@ -322,7 +319,7 @@
   let guestDisplayName = '';
   let lastInviteLink = '';
 
-  // Elements
+  // elements
   const createBtn = document.getElementById('createBtn');
   const createPwd = document.getElementById('createPwd');
   const hostNameInput = document.getElementById('hostName');
@@ -340,11 +337,13 @@
   const sendBtn = document.getElementById('sendBtn');
   const statusText = document.getElementById('statusText');
 
-  function chatSystem(text) {
-    if (!text) return;
+  function log(...a) { console.log('[chat]', ...a); }
+
+  function chatSystem(txt) {
+    if (!txt) return;
     const el = document.createElement('div');
     el.className = 'system';
-    el.textContent = text;
+    el.textContent = txt;
     chatBox.appendChild(el);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
@@ -364,9 +363,7 @@
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  function setStatusText(text) {
-    statusText.textContent = text;
-  }
+  function setStatusText(txt) { statusText.textContent = txt; }
 
   function escapeHtml(s) {
     if (!s && s !== 0) return '';
@@ -386,20 +383,18 @@
     peer = null;
   }
 
-  // Attach chat handler once per connection
+  // single handler per connection
   function attachChatHandlerOnce(c, side) {
     if (!c || c._hasChatHandler) return;
     c._hasChatHandler = true;
     c._lastAuth = null;
 
     c.on('data', data => {
+      log('[' + side + '] data', data);
       if (!data || !data.type) return;
 
       if (data.type === 'auth') {
-        // Store last auth payload for host validation & UI
         c._lastAuth = data;
-
-        // Guest handles response from host
         if (side === 'guest') {
           if (data.ok) {
             conn = c;
@@ -408,6 +403,7 @@
             sendBtn.disabled = false;
             setStatusText('Connected to ' + hostDisplayName);
             chatSystem('Joined room. You are connected to host.');
+            log('guest accepted by host', hostDisplayName);
           } else {
             setStatusText('Join rejected');
             chatSystem('Join rejected: ' + (data.reason || 'unknown'));
@@ -421,6 +417,8 @@
           ? guestDisplayName || 'Guest'
           : hostDisplayName || 'Host');
         chatMessage(from, data.text, false);
+      } else if (data.type === 'system') {
+        chatSystem(data.msg || '');
       }
     });
   }
@@ -430,7 +428,6 @@
     const pwd = createPwd.value.trim();
     const hostName = hostNameInput.value.trim() || 'Host';
     if (!pwd) return alert('Enter password');
-
     roomPassword = pwd;
     isHost = true;
     hostDisplayName = hostName;
@@ -442,10 +439,14 @@
       const link = `${location.origin}${location.pathname}?host=${id}&pw=${encodeURIComponent(pwd)}`;
       lastInviteLink = link;
 
+      // Show room info section
       roomInfo.style.display = 'block';
+
+      // Reset status UI
       copyStatus.style.display = 'none';
       shareBtn.style.display = 'none';
 
+      // Try to copy invite link to clipboard
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(link).then(() => {
           copyStatus.textContent = 'Invite link copied to clipboard.';
@@ -459,16 +460,20 @@
         copyStatus.style.display = 'block';
       }
 
+      // Show share button
       shareBtn.style.display = 'inline-block';
 
       chatSystem('Room created. Invite link copied to clipboard (or use Share).');
       setStatusText('Waiting for guest...');
+      log('host peer open', id);
     });
 
     peer.on('connection', c => {
+      log('incoming connection', c.peer);
       attachChatHandlerOnce(c, 'host');
 
       c.on('close', () => {
+        log('host: connection closed', c.peer);
         if (conn && conn.peer === c.peer) {
           conn = null;
           guestDisplayName = '';
@@ -483,14 +488,12 @@
         }
       });
 
-      c.on('error', () => { });
+      c.on('error', e => { log('host connection error', e); });
 
       showPending(c);
     });
 
-    peer.on('error', () => {
-      console.error('peer error host');
-    });
+    peer.on('error', e => { console.error('peer error host', e); });
   };
 
   // Share button handler
@@ -519,7 +522,6 @@
     }
   });
 
-  // Show pending join request (HOST)
   function showPending(c) {
     if (conn) {
       try { c.send({ type: 'auth', ok: false, reason: 'Host already connected' }); } catch (e) { }
@@ -528,43 +530,40 @@
     }
 
     removePendingById(c.peer);
-
     const box = document.createElement('div');
     box.id = 'pending-' + c.peer;
     box.style.padding = '8px';
-    box.style.marginTop = '10px';
+    box.style.marginTop = '8px';
     box.style.border = '1px solid white';
     box.style.borderRadius = '8px';
-    box.innerHTML =
-      '<div style="font-weight:700">Join request</div>' +
-      `<div style="margin-top:6px;"><strong>Guest:</strong> <span id="gname-${c.peer}">${escapeHtml((c.metadata && c.metadata.username) || 'Guest')}</span></div>` +
-      '<div style="margin-top:8px;"><button class="accept">Accept</button> <button class="reject">Reject</button></div>';
+    box.style.marginTop = '10px';
+    box.innerHTML = ''
+      + '<div style="font-weight:700">Join request</div>'
+      + `<div style="margin-top:6px;"><strong>Guest:</strong> <span id="gname-${c.peer}">${escapeHtml((c.metadata && c.metadata.username) || 'Guest')}</span></div>`
+      + '<div style="margin-top:8px;"><button class="accept">Accept</button> <button class="reject">Reject</button></div>';
 
     pendingArea.appendChild(box);
-
-    const acceptBtn = box.querySelector('.accept');
-    const rejectBtn = box.querySelector('.reject');
-
-    // IMPORTANT: disable Accept until auth (with password) arrives
-    acceptBtn.disabled = true;
 
     const authWatcher = setInterval(() => {
       if (c._lastAuth) {
         const el = document.getElementById('gname-' + c.peer);
         if (el) el.textContent = escapeHtml(c._lastAuth.username || 'Guest');
-        acceptBtn.disabled = false; // Now safe to accept
         clearInterval(authWatcher);
       }
     }, 150);
 
+    const acceptBtn = box.querySelector('.accept');
+    const rejectBtn = box.querySelector('.reject');
+
+    // 🔥 FIX: don't treat missing auth as "wrong password"
     acceptBtn.onclick = () => {
-      // Safety: if somehow still no auth, don't proceed
+      clearInterval(authWatcher);
+
+      // If auth hasn't arrived yet, ask host to wait
       if (!c._lastAuth) {
-        chatSystem('Still receiving join details, please wait a moment.');
+        chatSystem('Still receiving join details. Please wait a moment, then click Accept again.');
         return;
       }
-
-      clearInterval(authWatcher);
 
       const auth = c._lastAuth;
       const guestPwd = auth.password || '';
@@ -585,14 +584,13 @@
       sendBtn.disabled = false;
       setStatusText('Connected to ' + guestDisplayName);
 
-      try {
-        conn.send({ type: 'auth', ok: true, hostName: hostDisplayName });
-      } catch (e) {
+      try { conn.send({ type: 'auth', ok: true, hostName: hostDisplayName }); } catch (e) {
         console.warn('send auth ok failed', e);
       }
 
       box.remove();
       chatSystem(`${guestDisplayName} joined the room.`);
+      log('host accepted', guestDisplayName, c.peer);
     };
 
     rejectBtn.onclick = () => {
@@ -620,24 +618,22 @@
     guestDisplayName = guestName;
     joinBtn.disabled = true;
     ensureClosePeer();
-    isHost = false;
     peer = new Peer();
 
-    peer.on('open', () => {
+    peer.on('open', id => {
+      log('guest peer open', id);
       const c = peer.connect(hostId, { metadata: { username: guestName } });
       attachChatHandlerOnce(c, 'guest');
 
       c.on('open', () => {
-        try {
-          c.send({ type: 'auth', username: guestName, password: pwd });
-        } catch (e) {
-          console.warn('guest send auth failed', e);
-        }
+        log('guest: sending auth');
+        try { c.send({ type: 'auth', username: guestName, password: pwd }); } catch (e) { console.warn('guest send auth failed', e); }
         setStatusText('Waiting for host to accept...');
         chatSystem('Join request sent. Waiting for host...');
       });
 
       c.on('close', () => {
+        log('guest closed.');
         if (conn && conn.peer === c.peer) {
           conn = null;
           msgInput.disabled = true;
@@ -651,16 +647,16 @@
         joinBtn.disabled = false;
       });
 
-      c.on('error', () => {
-        console.error('guest connection error');
+      c.on('error', e => {
+        console.error('guest connection error', e);
         setStatusText('Connection error');
         chatSystem('Connection error');
         joinBtn.disabled = false;
       });
     });
 
-    peer.on('error', () => {
-      console.error('peer error guest');
+    peer.on('error', e => {
+      console.error('peer error guest', e);
       setStatusText('Peer error');
       chatSystem('Peer error');
       joinBtn.disabled = false;
@@ -669,32 +665,23 @@
 
   // SEND
   sendBtn.onclick = () => {
-    const text = msgInput.value.trim();
-    if (!text || !conn) return;
-    const fromName = isHost
-      ? (hostDisplayName || 'Host')
-      : (guestDisplayName || 'Guest');
-
-    try {
-      conn.send({ type: 'chat', text, fromName });
-    } catch (e) {
-      console.error('send failed', e);
-      return;
+    const txt = msgInput.value.trim();
+    if (!txt || !conn) return;
+    const fromName = isHost ? (hostDisplayName || 'Host') : (guestDisplayName || 'Guest');
+    try { conn.send({ type: 'chat', text: txt, fromName: fromName }); } catch (e) {
+      console.error('send failed', e); return;
     }
-
-    chatMessage('You', text, true);
+    chatMessage('You', txt, true);
     msgInput.value = '';
   };
 
-  msgInput.addEventListener('keyup', e => {
-    if (e.key === 'Enter') sendBtn.click();
-  });
+  msgInput.addEventListener('keyup', e => { if (e.key === 'Enter') sendBtn.click(); });
 
-  // Autofill from URL
+  // autofill from URL
   (function () {
-    const params = new URLSearchParams(location.search);
-    if (params.get('host')) hostIdInput.value = params.get('host');
-    if (params.get('pw')) joinPwd.value = params.get('pw');
+    const p = new URLSearchParams(location.search);
+    if (p.get('host')) hostIdInput.value = p.get('host');
+    if (p.get('pw')) joinPwd.value = p.get('pw');
   })();
 })();
 
